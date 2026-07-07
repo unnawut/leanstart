@@ -26,6 +26,15 @@ spec:
         prometheus.io/port: "8080"
         prometheus.io/path: "/metrics"
     spec:
+      # Tolerate GKE Spot VMs. GKE auto-taints Spot nodes with
+      # cloud.google.com/gke-spot=true:NoSchedule; without this, pods pinned to
+      # (or spread onto) Spot nodes stay Pending. Harmless on non-Spot/kind
+      # nodes, which carry no such taint.
+      tolerations:
+        - key: cloud.google.com/gke-spot
+          operator: Equal
+          value: "true"
+          effect: NoSchedule
       {{- if $client.nodeSelectorHost }}
       # Pinned via `@host`: schedule onto the node labelled leanstart.io/host=<host>.
       nodeSelector:

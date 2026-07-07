@@ -25,6 +25,7 @@ fn test_spec(clients: Vec<(&str, u32)>) -> DevnetSpec {
         bootnode_count: 5,
         subnets: 1,
         attestation_committee_count: None,
+        aggregator_hosts: vec![],
         injected: false,
     }
 }
@@ -71,6 +72,86 @@ fn test_generate_validator_config_basic() {
 
     assert!(vc.validators[0].is_aggregator);
     assert!(!vc.validators[1].is_aggregator);
+}
+
+#[test]
+fn test_aggregator_hosts_pin_per_subnet() {
+    // 2 subnets, 2 pods/subnet. Each subnet's aggregator (first pod) should be
+    // pinned to its subnet's label; non-aggregators keep their (None) placement.
+    let mut spec = test_spec(vec![("ream", 2)]);
+    spec.subnets = 2;
+    spec.attestation_committee_count = Some(2);
+    spec.aggregator_hosts = vec!["agg0".to_string(), "agg1".to_string()];
+    let vc = generate_validator_config(&spec).unwrap();
+
+    // subnet 0: ream_s0_p0 (aggregator -> agg0), ream_s0_p1 (no pin)
+    // subnet 1: ream_s1_p0 (aggregator -> agg1), ream_s1_p1 (no pin)
+    let by_name = |n: &str| vc.validators.iter().find(|v| v.name == n).unwrap();
+    let a0 = by_name("ream_s0_p0");
+    assert!(a0.is_aggregator);
+    assert_eq!(a0.host.as_deref(), Some("agg0"));
+    assert!(!by_name("ream_s0_p1").is_aggregator);
+    assert_eq!(by_name("ream_s0_p1").host, None);
+    let a1 = by_name("ream_s1_p0");
+    assert!(a1.is_aggregator);
+    assert_eq!(a1.host.as_deref(), Some("agg1"));
+    assert_eq!(by_name("ream_s1_p1").host, None);
+}
+
+#[test]
+fn test_multi_subnet_interleaves_ids_to_match_ream_committees() {
+    // ream assigns a validator's committee as `validator_id % committee_count`
+    // (== subnets), and the genesis tool assigns ids in `vc.validators` order.
+    // So the Vec must INTERLEAVE subnets: id i belongs to subnet i % subnets,
+    // ensuring each subnet's aggregator lands in a distinct ream committee.
+    let mut spec = test_spec(vec![("ream", 2)]);
+    spec.subnets = 2;
+    spec.attestation_committee_count = Some(2);
+    let vc = generate_validator_config(&spec).unwrap();
+    let subnets = spec.subnets as usize;
+
+    // Every validator's position (== ream validator_id) must satisfy
+    // id % subnets == its subnet, so leanstart-subnet-k == ream-committee-k.
+    for (id, v) in vc.validators.iter().enumerate() {
+        assert_eq!(
+            id % subnets,
+            v.subnet as usize,
+            "validator id {id} ({}) lands in ream committee {} but is tagged subnet {}",
+            v.name,
+            id % subnets,
+            v.subnet
+        );
+    }
+
+    // Concretely: the two aggregators (first pod of each subnet) must occupy
+    // distinct ream committees — the exact thing that was broken before.
+    let agg_ids: Vec<usize> = vc
+        .validators
+        .iter()
+        .enumerate()
+        .filter(|(_, v)| v.is_aggregator)
+        .map(|(id, _)| id % subnets)
+        .collect();
+    assert_eq!(agg_ids, vec![0, 1], "each subnet's aggregator must be in its own committee");
+}
+
+#[test]
+fn test_multi_subnet_with_multiple_validators_per_pod_errors() {
+    // vpp>1 can't map to ream's contiguous-per-pod committee assignment.
+    let mut spec = test_spec(vec![("ream", 2)]);
+    spec.subnets = 2;
+    spec.validators_per_pod = 2;
+    spec.attestation_committee_count = Some(2);
+    assert!(generate_validator_config(&spec).is_err());
+}
+
+#[test]
+fn test_aggregator_hosts_length_mismatch_errors() {
+    let mut spec = test_spec(vec![("ream", 1)]);
+    spec.subnets = 2;
+    spec.attestation_committee_count = Some(2);
+    spec.aggregator_hosts = vec!["agg0".to_string()]; // 1 label for 2 subnets
+    assert!(generate_validator_config(&spec).is_err());
 }
 
 #[test]

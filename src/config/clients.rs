@@ -97,7 +97,9 @@ pub fn get_client(name: &str) -> Option<&'static ClientDef> {
 /// - `is_aggregator`: whether this pod is the aggregator
 /// - `attestation_committee_count`: optional override
 /// - `aggregate_subnet_ids`: CSV of subnet ids (e.g. "0,1,2") an aggregator must
-///   subscribe to. Currently honoured only by zeam.
+///   subscribe to and aggregate from. Honoured by zeam and by ream (ream gained
+///   `--aggregate-subnet-ids` + `--attestation-committee-count` in PR #1372,
+///   merged to ream master 2026-05-11; present in the latest-devnet4 image).
 pub fn build_args(
     client: &ClientDef,
     node_id: &str,

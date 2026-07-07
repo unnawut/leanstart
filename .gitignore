@@ -4,6 +4,13 @@
 # Generated output
 /output/
 
+# GCP service-account keys — never commit. Used by scripts/cloud/.
+gcp-credentials.json
+*-credentials.json
+# Local env config for scripts/cloud/ (.env.example is committed).
+.env
+.env.bak
+
 # OS
 .DS_Store
 

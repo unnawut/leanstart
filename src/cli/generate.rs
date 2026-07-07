@@ -66,6 +66,12 @@ pub struct GenerateArgs {
     #[arg(long)]
     pub attestation_committee_count: Option<u32>,
 
+    /// Comma-separated per-subnet host labels for aggregator placement, e.g.
+    /// `agg0,agg1`. Pins the aggregator pod of subnet i to the node labelled
+    /// `leanstart.io/host=<label>`. Must list exactly one label per subnet.
+    #[arg(long, value_delimiter = ',')]
+    pub aggregator_hosts: Vec<String>,
+
     /// Generate for a remote multi-node cluster: emit injected-mode Helm values
     /// (no shared genesis PVC; keys/genesis injected per-pod at deploy time).
     #[arg(long)]
@@ -119,6 +125,7 @@ fn run_inner(args: GenerateArgs) -> Result<()> {
         bootnode_count: args.bootnode_count,
         subnets: args.subnets,
         attestation_committee_count: args.attestation_committee_count,
+        aggregator_hosts: args.aggregator_hosts.clone(),
         injected: args.injected,
     };
 

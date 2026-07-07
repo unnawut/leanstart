@@ -31,6 +31,14 @@ pub struct DevnetSpec {
     /// Explicit override for `config.attestation_committee_count`. Defaults to
     /// `subnets` when None.
     pub attestation_committee_count: Option<u32>,
+    /// Optional per-subnet host labels for aggregator placement. When non-empty,
+    /// the aggregator pod of subnet `i` is pinned (via `nodeSelector:
+    /// leanstart.io/host=<label>`) to `aggregator_hosts[i]`, overriding any
+    /// client-level `@host`. Length must equal `subnets`. Empty => aggregators
+    /// inherit their client's placement (the default). Used by the GKE sweep
+    /// tooling to give each subnet aggregator its own dedicated node so
+    /// leaf/recursion timings reflect the protocol, not co-tenant CPU.
+    pub aggregator_hosts: Vec<String>,
     /// Multi-node "injected" peering/key delivery mode (set for remote clusters,
     /// i.e. `--skip-kind`). When true the orchestrator gates the init container
     /// and injects IP-correct genesis + per-pod keys instead of using the

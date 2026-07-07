@@ -80,6 +80,14 @@ pub struct RunArgs {
     #[arg(long)]
     pub attestation_committee_count: Option<u32>,
 
+    /// Comma-separated per-subnet host labels for aggregator placement, e.g.
+    /// `agg0,agg1`. Pins the aggregator pod of subnet i to the node labelled
+    /// `leanstart.io/host=<label>`, overriding any client `@host`. Must list
+    /// exactly one label per subnet. Used by the GKE sweep tooling to give each
+    /// subnet aggregator a dedicated node.
+    #[arg(long, value_delimiter = ',')]
+    pub aggregator_hosts: Vec<String>,
+
     /// Skip Kind cluster creation and image loading. Use when targeting an
     /// existing multi-node K8s cluster instead of a local Kind cluster.
     #[arg(long)]
@@ -179,6 +187,7 @@ fn run_inner(args: RunArgs, run_dir: &Path) -> Result<()> {
         bootnode_count: args.bootnode_count,
         subnets: args.subnets,
         attestation_committee_count: args.attestation_committee_count,
+        aggregator_hosts: args.aggregator_hosts.clone(),
         // Remote multi-node clusters (--skip-kind) use the injected gated-init
         // path; local kind keeps the legacy shared-PVC + restart path.
         injected: args.skip_kind,

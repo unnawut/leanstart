@@ -107,11 +107,19 @@ pub fn generate_helm_values(
             aggregate_subnet_ids.as_deref(),
         );
 
-        let image = if client_def.arch_aware {
-            format!("{}-{}", client_def.image, image_arch_suffix())
-        } else {
-            client_def.image.to_string()
-        };
+        // Cloud-sweep scaffolding: LS_IMAGE_<CLIENT> overrides the pinned image
+        // verbatim (used to A/B custom builds, e.g. an AVX-512 ream). Falls back
+        // to the pinned image (+ arch suffix when arch-aware).
+        let image = std::env::var(format!("LS_IMAGE_{}", client_def.name.to_uppercase()))
+            .ok()
+            .filter(|s| !s.is_empty())
+            .unwrap_or_else(|| {
+                if client_def.arch_aware {
+                    format!("{}-{}", client_def.image, image_arch_suffix())
+                } else {
+                    client_def.image.to_string()
+                }
+            });
 
         // K8s-safe name: zeam_0 -> zeam-0, zeam_s1_p0 -> zeam-s1-p0
         let k8s_name = entry.name.replace('_', "-");
