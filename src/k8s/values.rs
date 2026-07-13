@@ -84,20 +84,19 @@ pub fn generate_helm_values(
     } else {
         None
     };
-    let aggregate_subnet_ids = if multi_subnet {
-        Some(
-            (0..spec.subnets)
-                .map(|i| i.to_string())
-                .collect::<Vec<_>>()
-                .join(","),
-        )
-    } else {
-        None
-    };
-
     for entry in vc.validators.iter() {
         let client_def = get_client(&entry.client)
             .ok_or_else(|| anyhow::anyhow!("Unknown client: {}", entry.client))?;
+
+        // Each aggregator handles ONLY its own subnet (realistic one-aggregator-
+        // per-subnet topology). Passing all subnets to every aggregator makes each
+        // redundantly aggregate every committee → inflated zkVM proving cost and
+        // looser finality. Non-aggregators aggregate nothing.
+        let aggregate_subnet_ids = if multi_subnet && entry.is_aggregator {
+            Some(entry.subnet.to_string())
+        } else {
+            None
+        };
 
         let args = build_args(
             client_def,
