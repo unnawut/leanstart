@@ -111,15 +111,28 @@ pub fn build_args(
 
     match client.name {
         "ethlambda" => {
+            // devnet5 CLI: explicit per-file flags (the devnet4 --custom-network-config-dir
+            // was removed) and hash-sig keys are now required (ethlambda uses PQ sigs).
+            // All files live in /config, populated uniformly for every pod.
             args.extend_from_slice(&[
-                "--custom-network-config-dir".into(),
-                "/config".into(),
-                "--gossipsub-port".into(),
-                "9000".into(),
-                "--node-id".into(),
-                node_id.into(),
+                "--genesis".into(),
+                "/config/config.yaml".into(),
+                "--validators".into(),
+                "/config/annotated_validators.yaml".into(),
+                "--bootnodes".into(),
+                "/config/nodes.yaml".into(),
+                "--validator-config".into(),
+                "/config/validator-config.yaml".into(),
+                "--hash-sig-keys-dir".into(),
+                "/config/hash-sig-keys".into(),
                 "--node-key".into(),
                 format!("/config/{node_id}.key"),
+                "--node-id".into(),
+                node_id.into(),
+                "--data-dir".into(),
+                "/data".into(),
+                "--gossipsub-port".into(),
+                "9000".into(),
                 "--metrics-port".into(),
                 "8080".into(),
             ]);
